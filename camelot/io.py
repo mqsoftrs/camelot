@@ -7,7 +7,7 @@ from .utils import validate_input, remove_extra
 
 
 def read_pdf(
-    filepath,
+    fileobj,
     pages="1",
     password=None,
     flavor="lattice",
@@ -22,8 +22,10 @@ def read_pdf(
 
     Parameters
     ----------
-    filepath : str
+    ~~filepath : str~~
         Filepath or URL of the PDF file.
+    fileobj : file 
+        file like object
     pages : str, optional (default: '1')
         Comma-separated page numbers.
         Example: '1,3,4' or '1,4-end' or 'all'.
@@ -108,7 +110,7 @@ def read_pdf(
             warnings.simplefilter("ignore")
 
         validate_input(kwargs, flavor=flavor)
-        p = PDFHandler(filepath, pages=pages, password=password)
+        p = PDFHandler(fileobj, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
         tables = p.parse(
             flavor=flavor,

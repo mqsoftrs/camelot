@@ -335,12 +335,12 @@ class Stream(BaseParser):
         rows = self._join_rows(rows_grouped, text_y_max, text_y_min)
         elements = [len(r) for r in rows_grouped]
 
-        if self.columns is not None and self.columns[table_idx] != "":
+        if self.columns is not None and len(self.columns) > 0 and self.columns[0] != "":
             # user has to input boundary columns too
             # take (0, pdf_width) by default
             # similar to else condition
             # len can't be 1
-            cols = self.columns[table_idx].split(",")
+            cols = self.columns[0].split(",")
             cols = [float(c) for c in cols]
             cols.insert(0, text_x_min)
             cols.append(text_x_max)

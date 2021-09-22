@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from io import BytesIO
 
 from ..utils import get_page_layout, get_text_objects
 
@@ -17,4 +18,4 @@ class BaseParser(object):
         self.horizontal_text = get_text_objects(self.layout, ltype="horizontal_text")
         self.vertical_text = get_text_objects(self.layout, ltype="vertical_text")
         self.pdf_width, self.pdf_height = self.dimensions
-        self.rootname, __ = os.path.splitext(self.filename)
+        self.rootname, __ = os.path.splitext(filename.name if isinstance(filename, BytesIO) else filename)

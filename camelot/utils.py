@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import os
-import re
 import random
+import re
 import shutil
 import string
 import tempfile
 import warnings
+from io import BytesIO
 from itertools import groupby
 from operator import itemgetter
+from urllib.parse import urlparse as parse_url
+from urllib.parse import uses_relative, uses_netloc, uses_params
+from urllib.request import Request, urlopen
 
 import numpy as np
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfpage import PDFTextExtractionNotAllowed
-from pdfminer.pdfinterp import PDFResourceManager
-from pdfminer.pdfinterp import PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import (
     LAParams,
@@ -26,11 +24,12 @@ from pdfminer.layout import (
     LTTextLineVertical,
     LTImage,
 )
-
-from urllib.request import Request, urlopen
-from urllib.parse import urlparse as parse_url
-from urllib.parse import uses_relative, uses_netloc, uses_params
-
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFPageInterpreter
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfpage import PDFTextExtractionNotAllowed
+from pdfminer.pdfparser import PDFParser
 
 _VALID_URLS = set(uses_relative + uses_netloc + uses_params)
 _VALID_URLS.discard("")
@@ -362,7 +361,7 @@ def text_in_bbox(bbox, text):
         t
         for t in text
         if lb[0] - 2 <= (t.x0 + t.x1) / 2.0 <= rt[0] + 2
-        and lb[1] - 2 <= (t.y0 + t.y1) / 2.0 <= rt[1] + 2
+           and lb[1] - 2 <= (t.y0 + t.y1) / 2.0 <= rt[1] + 2
     ]
 
     # Avoid duplicate text by discarding overlapping boxes
@@ -615,8 +614,8 @@ def split_textline(table, textline, direction, flag_size=False, strip_text=""):
                 for cut in x_cuts:
                     if isinstance(obj, LTChar):
                         if (
-                            row[1] <= (obj.y0 + obj.y1) / 2 <= row[0]
-                            and (obj.x0 + obj.x1) / 2 <= cut[1]
+                                row[1] <= (obj.y0 + obj.y1) / 2 <= row[0]
+                                and (obj.x0 + obj.x1) / 2 <= cut[1]
                         ):
                             cut_text.append((r, cut[0], obj))
                             break
@@ -648,8 +647,8 @@ def split_textline(table, textline, direction, flag_size=False, strip_text=""):
                 for cut in y_cuts:
                     if isinstance(obj, LTChar):
                         if (
-                            col[0] <= (obj.x0 + obj.x1) / 2 <= col[1]
-                            and (obj.y0 + obj.y1) / 2 >= cut[1]
+                                col[0] <= (obj.x0 + obj.x1) / 2 <= col[1]
+                                and (obj.y0 + obj.y1) / 2 >= cut[1]
                         ):
                             cut_text.append((cut[0], c, obj))
                             break
@@ -682,7 +681,7 @@ def split_textline(table, textline, direction, flag_size=False, strip_text=""):
 
 
 def get_table_index(
-    table, t, direction, split_text=False, flag_size=False, strip_text=""
+        table, t, direction, split_text=False, flag_size=False, strip_text=""
 ):
     """Gets indices of the table cell where given text object lies by
     comparing their y and x-coordinates.
@@ -837,12 +836,12 @@ def compute_whitespace(d):
 
 
 def get_page_layout(
-    filename,
-    char_margin=1.0,
-    line_margin=0.5,
-    word_margin=0.1,
-    detect_vertical=True,
-    all_texts=True,
+        filename,
+        char_margin=1.0,
+        line_margin=0.5,
+        word_margin=0.1,
+        detect_vertical=True,
+        all_texts=True,
 ):
     """Returns a PDFMiner LTPage object and page dimension of a single
     page pdf. See https://euske.github.io/pdfminer/ to get definitions
@@ -850,8 +849,8 @@ def get_page_layout(
 
     Parameters
     ----------
-    filename : string
-        Path to pdf file.
+    filename : string or file-like object
+        Path to pdf file, or BytesIO pdf object
     char_margin : float
     line_margin : float
     word_margin : float
@@ -866,8 +865,8 @@ def get_page_layout(
         Dimension of pdf page in the form (width, height).
 
     """
-    with open(filename, "rb") as f:
-        parser = PDFParser(f)
+    if isinstance(filename, BytesIO):
+        parser = PDFParser(filename)
         document = PDFDocument(parser)
         if not document.is_extractable:
             raise PDFTextExtractionNotAllowed(f"Text extraction is not allowed: {filename}")
@@ -888,6 +887,29 @@ def get_page_layout(
             height = layout.bbox[3]
             dim = (width, height)
         return layout, dim
+    else:
+        with open(filename, "rb") as f:
+            parser = PDFParser(f)
+            document = PDFDocument(parser)
+            if not document.is_extractable:
+                raise PDFTextExtractionNotAllowed(f"Text extraction is not allowed: {filename}")
+            laparams = LAParams(
+                char_margin=char_margin,
+                line_margin=line_margin,
+                word_margin=word_margin,
+                detect_vertical=detect_vertical,
+                all_texts=all_texts,
+            )
+            rsrcmgr = PDFResourceManager()
+            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+            interpreter = PDFPageInterpreter(rsrcmgr, device)
+            for page in PDFPage.create_pages(document):
+                interpreter.process_page(page)
+                layout = device.get_result()
+                width = layout.bbox[2]
+                height = layout.bbox[3]
+                dim = (width, height)
+            return layout, dim
 
 
 def get_text_objects(layout, ltype="char", t=None):
